@@ -12,7 +12,7 @@ The app automatically selects today's topic from a structured 55+ topic curricul
 - **No topic repeats** — completed topics are tracked in localStorage
 - **Coherent scripts** — Claude builds a narrative arc across scenes with a connecting thread
 - **Live preview** — see every scene rendered in the browser before rendering
-- **Export Remotion code** — one click to copy the composition code
+- **Export script JSON** — one click to copy `script.json`, drop it in `remotion/` and render
 - **Remotion render** — export 1920×1080 MP4 videos
 
 ---
@@ -77,7 +77,7 @@ Open [http://localhost:5173](http://localhost:5173)
 2. **Choose difficulty** — Beginner / Intermediate / Advanced / Research
 3. **Click "Generate Script"** — Claude builds a coherent scene-by-scene script
 4. **Preview scenes** using the tabs, scrubber, or ← → arrow keys
-5. **Click "Export Code"** to copy Remotion composition code to clipboard
+5. **Click "Export Code"** to copy the script JSON to clipboard, then save it as `remotion/script.json` in this repo
 6. **Mark Done** when you've watched/used the video — this prevents the topic from being picked again
 
 ### 5. Fallback: OAuth proxy mode (no API credits needed)
@@ -116,14 +116,18 @@ Then in the app, click **Generate Script** as normal. If it fails, click **"Try 
 
 ### 6. Render a video with Remotion
 
-After generating a script in the UI, save it:
+After generating a script in the UI:
+
+1. Click **Export Code** — the script JSON is copied to your clipboard
+2. Save it as `remotion/script.json` in this repo (create the file if it doesn't exist)
+3. Run the Remotion renderer:
 
 ```bash
-# The UI's "Export Code" copies the composition.
-# To render with Remotion, first save the script:
-npm run studio          # Opens Remotion Studio at localhost:3000
+npm run studio          # Opens Remotion Studio at localhost:3000 for a live preview
 npm run render          # Renders to out/<topicId>.mp4
 ```
+
+> `Root.tsx` automatically reads `remotion/script.json` — no other changes needed.
 
 ---
 
@@ -143,7 +147,7 @@ ai-explainer-studio/
 │   ├── services/
 │   │   ├── claude.ts             # Anthropic API calls + response validation
 │   │   ├── claudeCode.ts         # Claude Code CLI fallback (calls local proxy)
-│   │   └── codeExporter.ts       # Generates Remotion composition code
+│   │   └── codeExporter.ts       # Serialises VideoScript → script.json for Remotion
 │   ├── hooks/
 │   │   └── useAppStore.ts        # Zustand store — single source of truth
 │   └── components/
@@ -153,7 +157,8 @@ ai-explainer-studio/
 │
 ├── remotion/                     # Remotion compositions
 │   ├── index.ts                  # registerRoot entry
-│   ├── Root.tsx                  # Composition registration
+│   ├── Root.tsx                  # Reads script.json and registers Composition
+│   ├── script.json               # ← paste exported JSON here (git-ignored)
 │   ├── compositions/
 │   │   └── VideoComposition.tsx  # Main composition — drives Series
 │   └── scenes/
