@@ -25,7 +25,7 @@ The app automatically selects today's topic from a structured 55+ topic curricul
 | Styling     | Tailwind CSS |
 | State       | Zustand |
 | AI (primary)| Anthropic Claude API (Haiku — cheapest, fastest for structured JSON) |
-| AI (fallback)| Claude Code CLI via local Express proxy |
+| AI (fallback)| claude.ai OAuth token via local Express proxy (no API credits needed) |
 | Video       | Remotion 4 |
 | Build       | Vite 5 |
 
@@ -80,23 +80,37 @@ Open [http://localhost:5173](http://localhost:5173)
 5. **Click "Export Code"** to copy Remotion composition code to clipboard
 6. **Mark Done** when you've watched/used the video — this prevents the topic from being picked again
 
-### 5. Fallback: Claude Code CLI mode
+### 5. Fallback: OAuth proxy mode (no API credits needed)
 
-If your Anthropic API credits run out (or the key is invalid), the app shows a **"Try with Claude Code CLI"** button below the error message. Instead of calling the Anthropic API directly, it routes the request through a local proxy server that runs the `claude` CLI — using your Claude Code subscription.
+If your Anthropic API credits run out (or the key is invalid), the app shows a **"Try with Claude Code CLI"** button below the error message. Instead of calling the Anthropic API with a pay-per-use key, it routes the request through a local proxy server that authenticates via your **claude.ai subscription OAuth token** — stored securely in the macOS Keychain by Claude Code CLI.
+
+No API key, no credits, no secrets in code or environment variables.
+
+**How it works:**
+
+The proxy reads your OAuth Bearer token from the macOS Keychain (written there by `claude auth login`), then calls the Anthropic API with:
+- `Authorization: Bearer <token>` — uses your claude.ai Pro/Max subscription
+- `anthropic-beta: oauth-2025-04-20` — enables OAuth-based inference routing
+
+The token never leaves your machine and is never written to disk by this project.
 
 **How to enable it:**
 
-In a separate terminal, start the proxy server:
-
 ```bash
+# 1. Authenticate Claude Code CLI (one-time)
+claude auth login
+
+# 2. Start the proxy server in a separate terminal
 npm run server      # starts Express proxy on http://localhost:3001
 ```
 
 Then in the app, click **Generate Script** as normal. If it fails, click **"Try with Claude Code CLI"** and the proxy handles the rest.
 
 **Requirements:**
-- [Claude Code CLI](https://claude.ai/code) installed and authenticated (`claude --version` should work)
-- Proxy server running (`npm run server`) before clicking the fallback button
+- [Claude Code CLI](https://claude.ai/code) installed: `claude --version`
+- Authenticated via OAuth: `claude auth login` (requires a claude.ai Pro or Max subscription)
+- Proxy server running: `npm run server`
+- macOS only (uses the macOS Keychain to read the OAuth token)
 
 ---
 
@@ -151,7 +165,7 @@ ai-explainer-studio/
 │       ├── SummaryScene.tsx
 │       └── TeaserScene.tsx
 │
-├── server.ts                     # Local Claude Code CLI proxy (port 3001)
+├── server.ts                     # Local OAuth proxy — reads token from macOS Keychain (port 3001)
 ├── index.html
 ├── vite.config.ts
 ├── tailwind.config.js
@@ -186,6 +200,7 @@ ai-explainer-studio/
 | Decision | Rationale |
 |----------|-----------|
 | **Claude Haiku** | Cheapest model, fast, excellent at structured JSON output. Reduces token cost by ~10x vs Opus. |
+| **OAuth proxy over CLI spawn** | Replaces `claude -p` subprocess (which uses API credits) with direct SDK calls authenticated via the claude.ai subscription OAuth token — reads from macOS Keychain, zero secrets in code or env. |
 | **Zustand over Redux** | Minimal boilerplate, built-in devtools, no Provider wrapping needed |
 | **sessionStorage for API key** | Security — key is cleared when tab closes, never in git |
 | **Prerequisite graph** | Enables contextual ordering without a full graph traversal — simple scoring function |
