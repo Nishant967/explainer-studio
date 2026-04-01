@@ -60,6 +60,14 @@ export const useAppStore = create<AppStore>((set, get) => {
   // Hydrate from storage on creation
   const history  = loadHistory();
   const settings = loadSettings();
+
+  // Seed API key from env if not already set
+  const envKey = import.meta.env.VITE_ANTHROPIC_API_KEY as string | undefined;
+  if (!isValidApiKey(settings.apiKey) && envKey) {
+    settings.apiKey = envKey;
+    saveApiKey(envKey);
+  }
+
   const daily    = pickDailyTopic(history);
 
   return {

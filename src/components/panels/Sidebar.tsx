@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppStore } from '../../hooks/useAppStore';
 import { Button } from '../ui/Button';
 import { CATEGORIES } from '../../config/curriculum';
@@ -15,6 +15,7 @@ export const Sidebar: React.FC = () => {
 
   const [keyVisible, setKeyVisible] = useState(false);
   const [keyDraft, setKeyDraft]     = useState(settings.apiKey);
+  useEffect(() => { setKeyDraft(settings.apiKey); }, [settings.apiKey]);
 
   const s = stats();
   const levels: DifficultyLevel[] = ['beginner', 'intermediate', 'advanced', 'research'];

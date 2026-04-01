@@ -78,8 +78,11 @@ export function loadSettings(): AppSettings {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.SETTINGS);
     const saved = raw ? JSON.parse(raw) : {};
-    // API key never comes from localStorage — check sessionStorage
-    const apiKey = sessionStorage.getItem(SESSION_KEYS.API_KEY) ?? '';
+    // API key: sessionStorage > VITE env var > empty
+    const apiKey =
+      sessionStorage.getItem(SESSION_KEYS.API_KEY) ||
+      (import.meta.env.VITE_ANTHROPIC_API_KEY as string | undefined) ||
+      '';
     return { ...DEFAULT_SETTINGS, ...saved, apiKey };
   } catch {
     return DEFAULT_SETTINGS;
