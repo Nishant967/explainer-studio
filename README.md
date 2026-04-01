@@ -24,7 +24,8 @@ The app automatically selects today's topic from a structured 55+ topic curricul
 | UI          | React 18 + TypeScript |
 | Styling     | Tailwind CSS |
 | State       | Zustand |
-| AI          | Anthropic Claude (Haiku — cheapest, fastest for structured JSON) |
+| AI (primary)| Anthropic Claude API (Haiku — cheapest, fastest for structured JSON) |
+| AI (fallback)| Claude Code CLI via local Express proxy |
 | Video       | Remotion 4 |
 | Build       | Vite 5 |
 
@@ -60,6 +61,7 @@ VITE_ANTHROPIC_API_KEY=sk-ant-your-key-here
 > **Security note:** The app also accepts the API key entered directly in the UI sidebar.
 > When entered via the UI, it is stored in **sessionStorage only** (cleared on tab close).
 > The `.env` key is embedded in the Vite build — use it for local dev only, never deploy with it.
+> If `VITE_ANTHROPIC_API_KEY` is set, it is **auto-populated** into the sidebar field on load — no manual paste needed.
 
 ### 3. Run the web app
 
@@ -78,7 +80,27 @@ Open [http://localhost:5173](http://localhost:5173)
 5. **Click "Export Code"** to copy Remotion composition code to clipboard
 6. **Mark Done** when you've watched/used the video — this prevents the topic from being picked again
 
-### 5. Render a video with Remotion
+### 5. Fallback: Claude Code CLI mode
+
+If your Anthropic API credits run out (or the key is invalid), the app shows a **"Try with Claude Code CLI"** button below the error message. Instead of calling the Anthropic API directly, it routes the request through a local proxy server that runs the `claude` CLI — using your Claude Code subscription.
+
+**How to enable it:**
+
+In a separate terminal, start the proxy server:
+
+```bash
+npm run server      # starts Express proxy on http://localhost:3001
+```
+
+Then in the app, click **Generate Script** as normal. If it fails, click **"Try with Claude Code CLI"** and the proxy handles the rest.
+
+**Requirements:**
+- [Claude Code CLI](https://claude.ai/code) installed and authenticated (`claude --version` should work)
+- Proxy server running (`npm run server`) before clicking the fallback button
+
+---
+
+### 6. Render a video with Remotion
 
 After generating a script in the UI, save it:
 
@@ -106,6 +128,7 @@ ai-explainer-studio/
 │   │   └── storage.ts            # localStorage / sessionStorage abstraction
 │   ├── services/
 │   │   ├── claude.ts             # Anthropic API calls + response validation
+│   │   ├── claudeCode.ts         # Claude Code CLI fallback (calls local proxy)
 │   │   └── codeExporter.ts       # Generates Remotion composition code
 │   ├── hooks/
 │   │   └── useAppStore.ts        # Zustand store — single source of truth
@@ -128,6 +151,7 @@ ai-explainer-studio/
 │       ├── SummaryScene.tsx
 │       └── TeaserScene.tsx
 │
+├── server.ts                     # Local Claude Code CLI proxy (port 3001)
 ├── index.html
 ├── vite.config.ts
 ├── tailwind.config.js
