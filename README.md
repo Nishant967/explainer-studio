@@ -12,7 +12,7 @@ The app automatically selects today's topic from a structured 55+ topic curricul
 - **No topic repeats** — completed topics are tracked in localStorage
 - **Coherent scripts** — Claude builds a narrative arc across scenes with a connecting thread
 - **Live preview** — see every scene rendered in the browser before rendering
-- **Export Remotion code** — one click to copy the composition code
+- **Export script JSON** — one click to copy `script.json`, drop it in `remotion/` and render
 - **Remotion render** — export 1920×1080 MP4 videos
 
 ---
@@ -24,7 +24,8 @@ The app automatically selects today's topic from a structured 55+ topic curricul
 | UI          | React 18 + TypeScript |
 | Styling     | Tailwind CSS |
 | State       | Zustand |
-| AI          | Anthropic Claude (Haiku — cheapest, fastest for structured JSON) |
+| AI (primary)| Anthropic Claude API (Haiku — cheapest, fastest for structured JSON) |
+| AI (fallback)| claude.ai OAuth token via local Express proxy (no API credits needed) |
 | Video       | Remotion 4 |
 | Build       | Vite 5 |
 
@@ -60,6 +61,7 @@ VITE_ANTHROPIC_API_KEY=sk-ant-your-key-here
 > **Security note:** The app also accepts the API key entered directly in the UI sidebar.
 > When entered via the UI, it is stored in **sessionStorage only** (cleared on tab close).
 > The `.env` key is embedded in the Vite build — use it for local dev only, never deploy with it.
+> If `VITE_ANTHROPIC_API_KEY` is set, it is **auto-populated** into the sidebar field on load — no manual paste needed.
 
 ### 3. Run the web app
 
@@ -75,19 +77,57 @@ Open [http://localhost:5173](http://localhost:5173)
 2. **Choose difficulty** — Beginner / Intermediate / Advanced / Research
 3. **Click "Generate Script"** — Claude builds a coherent scene-by-scene script
 4. **Preview scenes** using the tabs, scrubber, or ← → arrow keys
-5. **Click "Export Code"** to copy Remotion composition code to clipboard
+5. **Click "Export Code"** to copy the script JSON to clipboard, then save it as `remotion/script.json` in this repo
 6. **Mark Done** when you've watched/used the video — this prevents the topic from being picked again
 
-### 5. Render a video with Remotion
+### 5. Fallback: OAuth proxy mode (no API credits needed)
 
-After generating a script in the UI, save it:
+If your Anthropic API credits run out (or the key is invalid), the app shows a **"Try with Claude Code CLI"** button below the error message. Instead of calling the Anthropic API with a pay-per-use key, it routes the request through a local proxy server that authenticates via your **claude.ai subscription OAuth token** — stored securely in the macOS Keychain by Claude Code CLI.
+
+No API key, no credits, no secrets in code or environment variables.
+
+**How it works:**
+
+The proxy reads your OAuth Bearer token from the macOS Keychain (written there by `claude auth login`), then calls the Anthropic API with:
+- `Authorization: Bearer <token>` — uses your claude.ai Pro/Max subscription
+- `anthropic-beta: oauth-2025-04-20` — enables OAuth-based inference routing
+
+The token never leaves your machine and is never written to disk by this project.
+
+**How to enable it:**
 
 ```bash
-# The UI's "Export Code" copies the composition.
-# To render with Remotion, first save the script:
-npm run studio          # Opens Remotion Studio at localhost:3000
+# 1. Authenticate Claude Code CLI (one-time)
+claude auth login
+
+# 2. Start the proxy server in a separate terminal
+npm run server      # starts Express proxy on http://localhost:3001
+```
+
+Then in the app, click **Generate Script** as normal. If it fails, click **"Try with Claude Code CLI"** and the proxy handles the rest.
+
+**Requirements:**
+- [Claude Code CLI](https://claude.ai/code) installed: `claude --version`
+- Authenticated via OAuth: `claude auth login` (requires a claude.ai Pro or Max subscription)
+- Proxy server running: `npm run server`
+- macOS only (uses the macOS Keychain to read the OAuth token)
+
+---
+
+### 6. Render a video with Remotion
+
+After generating a script in the UI:
+
+1. Click **Export Code** — the script JSON is copied to your clipboard
+2. Save it as `remotion/script.json` in this repo (create the file if it doesn't exist)
+3. Run the Remotion renderer:
+
+```bash
+npm run studio          # Opens Remotion Studio at localhost:3000 for a live preview
 npm run render          # Renders to out/<topicId>.mp4
 ```
+
+> `Root.tsx` automatically reads `remotion/script.json` — no other changes needed.
 
 ---
 
@@ -106,7 +146,8 @@ ai-explainer-studio/
 │   │   └── storage.ts            # localStorage / sessionStorage abstraction
 │   ├── services/
 │   │   ├── claude.ts             # Anthropic API calls + response validation
-│   │   └── codeExporter.ts       # Generates Remotion composition code
+│   │   ├── claudeCode.ts         # Claude Code CLI fallback (calls local proxy)
+│   │   └── codeExporter.ts       # Serialises VideoScript → script.json for Remotion
 │   ├── hooks/
 │   │   └── useAppStore.ts        # Zustand store — single source of truth
 │   └── components/
@@ -116,7 +157,8 @@ ai-explainer-studio/
 │
 ├── remotion/                     # Remotion compositions
 │   ├── index.ts                  # registerRoot entry
-│   ├── Root.tsx                  # Composition registration
+│   ├── Root.tsx                  # Reads script.json and registers Composition
+│   ├── script.json               # ← paste exported JSON here (git-ignored)
 │   ├── compositions/
 │   │   └── VideoComposition.tsx  # Main composition — drives Series
 │   └── scenes/
@@ -128,6 +170,7 @@ ai-explainer-studio/
 │       ├── SummaryScene.tsx
 │       └── TeaserScene.tsx
 │
+├── server.ts                     # Local OAuth proxy — reads token from macOS Keychain (port 3001)
 ├── index.html
 ├── vite.config.ts
 ├── tailwind.config.js
@@ -162,6 +205,7 @@ ai-explainer-studio/
 | Decision | Rationale |
 |----------|-----------|
 | **Claude Haiku** | Cheapest model, fast, excellent at structured JSON output. Reduces token cost by ~10x vs Opus. |
+| **OAuth proxy over CLI spawn** | Replaces `claude -p` subprocess (which uses API credits) with direct SDK calls authenticated via the claude.ai subscription OAuth token — reads from macOS Keychain, zero secrets in code or env. |
 | **Zustand over Redux** | Minimal boilerplate, built-in devtools, no Provider wrapping needed |
 | **sessionStorage for API key** | Security — key is cleared when tab closes, never in git |
 | **Prerequisite graph** | Enables contextual ordering without a full graph traversal — simple scoring function |

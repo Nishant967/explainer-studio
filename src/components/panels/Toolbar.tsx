@@ -74,7 +74,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onExport, onMarkDone }) => {
         size="sm"
         disabled={!hasScript}
         onClick={onExport}
-        aria-label="Copy Remotion code to clipboard"
+        aria-label="Copy script JSON to clipboard"
       >
         &lt;/&gt; Export Code
       </Button>

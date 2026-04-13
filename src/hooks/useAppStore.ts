@@ -23,6 +23,7 @@ import {
   loadSettings, saveSettings, saveApiKey,
 } from '../lib/storage';
 import { generateScript, isValidApiKey } from '../services/claude';
+import { generateScriptViaClaudeCode } from '../services/claudeCode';
 import { pickDailyTopic, recommendNext, curriculumStats } from '../lib/scheduler';
 
 // ── State shape ───────────────────────────────────────────────────
@@ -43,12 +44,13 @@ interface AppStore {
   repickTopic:   () => void;
 
   // Generation
-  status:        GenerationStatus;
-  errorMessage:  string | null;
-  currentScript: VideoScript | null;
-  activeScene:   number;
-  generate:      () => Promise<void>;
-  setActiveScene:(idx: number) => void;
+  status:                   GenerationStatus;
+  errorMessage:             string | null;
+  currentScript:            VideoScript | null;
+  activeScene:              number;
+  generate:                 () => Promise<void>;
+  generateViaClaudeCode:    () => Promise<void>;
+  setActiveScene:           (idx: number) => void;
 
   // Derived (computed on read — no need to store)
   stats: () => ReturnType<typeof curriculumStats>;
@@ -143,6 +145,46 @@ export const useAppStore = create<AppStore>((set, get) => {
         });
 
         // Record in history (not completed yet — user marks it done)
+        const updatedHistory = upsertWatchEntry(history, dailyTopic.id, {
+          level:     settings.defaultLevel,
+          watchedAt: new Date().toISOString(),
+        });
+        saveHistory(updatedHistory);
+
+        set({
+          status:        'ready',
+          currentScript: script,
+          activeScene:   0,
+          history:       updatedHistory,
+        });
+      } catch (err) {
+        set({
+          status:       'error',
+          errorMessage: err instanceof Error ? err.message : 'Unexpected error',
+        });
+      }
+    },
+
+    async generateViaClaudeCode() {
+      const { dailyTopic, settings, history } = get();
+
+      if (!dailyTopic) {
+        set({ status: 'error', errorMessage: 'No topic selected' });
+        return;
+      }
+
+      set({ status: 'generating', errorMessage: null });
+
+      try {
+        const nextTopic = recommendNext(dailyTopic.id, history);
+
+        const script = await generateScriptViaClaudeCode({
+          topic:          dailyTopic,
+          level:          settings.defaultLevel,
+          history,
+          nextTopicTitle: nextTopic?.title ?? null,
+        });
+
         const updatedHistory = upsertWatchEntry(history, dailyTopic.id, {
           level:     settings.defaultLevel,
           watchedAt: new Date().toISOString(),

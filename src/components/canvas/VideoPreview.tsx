@@ -6,12 +6,14 @@
 import React, { useCallback } from 'react';
 import { useAppStore } from '../../hooks/useAppStore';
 import { SceneRenderer } from './SceneRenderer';
+import { Button } from '../ui/Button';
 import { CATEGORIES } from '../../config/curriculum';
 
 export const VideoPreview: React.FC = () => {
   const {
     currentScript, status, activeScene,
     setActiveScene, dailyTopic, errorMessage,
+    generateViaClaudeCode,
   } = useAppStore();
 
   const cat = dailyTopic ? CATEGORIES.find(c => c.id === dailyTopic.category) : null;
@@ -38,9 +40,21 @@ export const VideoPreview: React.FC = () => {
             <span className="text-5xl opacity-25" aria-hidden>🎬</span>
             <p className="text-lg font-extrabold text-white/30">No script yet</p>
             {status === 'error' && errorMessage ? (
-              <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3 leading-snug">
-                {errorMessage}
-              </p>
+              <div className="flex flex-col items-center gap-3">
+                <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3 leading-snug">
+                  {errorMessage}
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => generateViaClaudeCode()}
+                >
+                  Try with Claude Code CLI
+                </Button>
+                <p className="font-mono text-[9px] text-white/20">
+                  Requires <code>npm run server</code> running locally
+                </p>
+              </div>
             ) : (
               <p className="text-sm text-white/20 leading-relaxed">
                 Add your API key, pick a difficulty, then click <strong className="text-white/40">Generate Script</strong>.

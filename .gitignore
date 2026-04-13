@@ -3,6 +3,9 @@ node_modules/
 .pnp
 .pnp.js
 
+# Generated Remotion script (user-specific, not committed)
+remotion/script.json
+
 # Build outputs
 dist/
 build/

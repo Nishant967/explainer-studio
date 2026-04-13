@@ -34,7 +34,7 @@ export const App: React.FC = () => {
     if (!currentScript) return;
     const code = generateRemotionCode(currentScript);
     navigator.clipboard.writeText(code)
-      .then(() => show('Remotion code copied to clipboard!', 'success'))
+      .then(() => show('Script JSON copied! Save as remotion/script.json, then run npm run studio or npm run render.', 'success'))
       .catch(() => show('Clipboard write failed — check browser permissions', 'error'));
   }, [currentScript, show]);
 
